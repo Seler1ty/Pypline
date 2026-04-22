@@ -1,0 +1,82 @@
+import pandas as pd
+import csv
+import time
+import requests
+import ast
+from math import radians, sin, cos, sqrt, atan2
+
+# Глобальный кэш для уменьшения количества запросов к API
+route_cache = {}
+CACHE_ENABLED = True
+
+def haversine(coord1, coord2):
+    """
+    Вычисление расстояния между двумя географическими точками в метрах
+    """
+    lat1, lon1 = coord1
+    lat2, lon2 = coord2
+
+    R = 6371000  # Радиус Земли в метрах
+
+    lat1_rad = radians(lat1)
+    lon1_rad = radians(lon1)
+    lat2_rad = radians(lat2)
+    lon2_rad = radians(lon2)
+
+    dlat = lat2_rad - lat1_rad
+    dlon = lon2_rad - lon1_rad
+
+    a = sin(dlat/2)**2 + cos(lat1_rad) * cos(lat2_rad) * sin(dlon/2)**2
+    c = 2 * atan2(sqrt(a), sqrt(1-a))
+
+    return R * c
+
+def get_route_valhalla(start_coords, end_coords, max_retries=3):
+    """
+    Получение маршрута через Valhalla API
+    """
+    cache_key = f"{start_coords}_{end_coords}" if CACHE_ENABLED else None
+
+    if CACHE_ENABLED and cache_key in route_cache:
+        return route_cache[cache_key]
+
+    url = "https://valhalla1.openstreetmap.de/route"
+
+    body = {
+        "locations": [
+            {"lat": start_coords[0], "lon": start_coords[1]},
+            {"lat": end_coords[0], "lon": end_coords[1]}
+        ],
+        "costing": "pedestrian",
+        "directions_options": {"units": "kilometers"}
+    }
+
+    for attempt in range(max_retries):
+        try:
+            response = requests.post(url, json=body, timeout=10)
+
+            if response.status_code == 200:
+                data = response.json()
+
+                if 'trip' in data:
+                    route = data['trip']
+                    leg = route['legs'][0]
+
+                    result = {
+                        'distance': leg['summary']['length'] * 1000,  # meters
+                        'duration': leg['summary']['time'],  # seconds
+                        'geometry': leg['shape']
+                    }
+
+                    if CACHE_ENABLED:
+                        route_cache[cache_key] = result
+
+                    return result
+
+        except Exception:
+            pass
+
+        if attempt < max_retries - 1:
+            time.sleep(1)
+
+    return None
