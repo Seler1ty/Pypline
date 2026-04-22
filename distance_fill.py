@@ -2,15 +2,17 @@ import psycopg2
 import time
 from datetime import datetime, timezone
 from route_osm import haversine, get_route_valhalla
+from credentials import Credentials
 
 # Подключение к БД
+
 conn = psycopg2.connect(
-    host="aws-0-eu-west-1.pooler.supabase.com",
-    dbname="postgres",
-    user="postgres.zfkqshewjjjumdbwcqrb",
-    password="UralFederalCircus",
-    port=6543,
-    sslmode="require"
+    host = Credentials.HOST,
+    dbname = Credentials.DBNAME,
+    user = Credentials.USER,
+    password = Credentials.PASSWORD,
+    port = Credentials.PORT,
+    sslmode = "require"
 )
 # conn.close()
 
@@ -114,7 +116,7 @@ def process():
                     )
                 else:
                     save_distance(
-                        None,
+                        direct,
                         q_id, gz_id,
                         False
                     )
@@ -123,3 +125,5 @@ def process():
             # если всё успешно
             if all_ok:
                 mark_quarter_done(q_id)
+
+
