@@ -7,11 +7,11 @@ from credentials import Credentials
 # Подключение к БД
 
 conn = psycopg2.connect(
-    host = Credentials.HOST,
-    dbname = Credentials.DBNAME,
+    host = "aws-0-eu-west-1.pooler.supabase.com",
+    dbname = "postgres",
     user = Credentials.USER,
     password = Credentials.PASSWORD,
-    port = Credentials.PORT,
+    port = 6543,
     sslmode = "require"
 )
 # conn.close()
@@ -127,3 +127,10 @@ def process():
                 mark_quarter_done(q_id)
 
 
+def main():
+    print("Hello, World!")
+    pass
+
+
+if __name__ == "__main__":
+    main()
