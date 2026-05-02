@@ -1,101 +1,63 @@
 from db import conn
-import time
-from datetime import datetime, timezone
-from route_osm import haversine
+from datetime import date
 
 
-
-def get_cities():
+def process(batch_size=200):
     with conn.cursor() as cur:
         cur.execute("SELECT city_id FROM cities")
-        return [row[0] for row in cur.fetchall()]
+        cities = [row[0] for row in cur.fetchall()]
 
+        for city_id in cities:
+            print(f"Обработка города {city_id}...")
 
-def get_quarters(city_id):
-    with conn.cursor() as cur:
-        cur.execute("""
-            SELECT
-                id,
-                ST_Centroid(coords),
-                ST_Y(ST_Centroid(coords)),
-                ST_X(ST_Centroid(coords))
-            FROM quarters
-            WHERE city_id = %s
-            ORDER BY id;
-        """, (city_id,))
+            cur.execute("SELECT COUNT(*) FROM quarters WHERE city_id = %s", (city_id,))
+            total_quarters = cur.fetchone()[0]
+            print(f"  Всего кварталов: {total_quarters}")
 
-        return cur.fetchall()
+            offset = 0
+            processed = 0
+            total_inserted = 0
 
+            while offset < total_quarters:
+                cur.execute("""
+                    INSERT INTO distances (green_zone_id, quarter_id, is_processed, start_point, end_point)
+                    SELECT 
+                        gz.id,
+                        q.id,
+                        FALSE,
+                        ST_Centroid(q.coords),
+                        ST_ClosestPoint(gz.coords, ST_Centroid(q.coords))
+                    FROM (
+                        SELECT id, coords 
+                        FROM quarters 
+                        WHERE city_id = %s 
+                        ORDER BY id 
+                        LIMIT %s OFFSET %s
+                    ) q
+                    JOIN green_zones gz ON ST_DWithin(
+                        ST_Centroid(q.coords)::geography, 
+                        gz.coords::geography, 
+                        1500
+                    ) AND gz.city_id = %s
+                    ON CONFLICT DO NOTHING;
+                """, (city_id, batch_size, offset, city_id))
 
-def get_green_zones(city_id):
-    with conn.cursor() as cur:
-        cur.execute("""
-            SELECT
-                id,
-                ST_Centroid(coords),
-                ST_Y(ST_Centroid(coords)),
-                ST_X(ST_Centroid(coords))
-            FROM green_zones
-            WHERE city_id = %s
-        """, (city_id,))
+                inserted = cur.rowcount
+                total_inserted += inserted
+                processed += batch_size
+                offset += batch_size
 
-        return cur.fetchall()
+                print(f"    Пачка {offset//batch_size}: обработано кварталов до {offset} (из {total_quarters}), вставлено пар: {inserted}")
 
+                conn.commit()
 
-def save_route_ends(q_id, gz_id, q_center, gz_center):
-    with conn.cursor() as cur:
-        cur.execute("""
-            INSERT INTO distances (
-                green_zone_id,
-                quarter_id,
-                is_processed,
-                start_point,
-                end_point
-            )
-            VALUES (%s, %s, FALSE, %s, %s)
-            ON CONFLICT DO NOTHING;
-        """, (
-            gz_id,
-            q_id,
-            q_center,
-            gz_center,
-        ))
+            cur.execute("""
+                UPDATE quarters
+                SET last_processed_at = %s
+                WHERE city_id = %s
+            """, (date.today(), city_id))
+            conn.commit()
 
-# Я пока делал код, забыл, зачем нам нужна эта функция. Чекните, нужна ли, пж
-def mark_quarter_done(q_id):
-    with conn.cursor() as cur:
-        cur.execute("""
-            UPDATE quarters
-            SET last_processed_at = %s
-            WHERE id = %s            
-        """, (datetime.now(timezone.utc), q_id,))
+            print(f"  Город {city_id}: вставлено {total_inserted} пар, обновлено кварталов: {cur.rowcount}\n")
 
-
-def process():
-
-    cities = get_cities()
-
-    for city_id in cities:
-
-        green_zones = get_green_zones(city_id)
-        quarters = get_quarters(city_id)
-
-        for q_id, q_center_geom, q_lat, q_lon in quarters:
-
-            center = (q_lat, q_lon)
-
-            for gz_id, gz_center_geom, gz_lat, gz_lon in green_zones:
-
-                target = (gz_lat, gz_lon)
-
-                direct = haversine(center, target)
-
-                if direct <= 1500:
-                    save_route_ends(
-                        gz_id,
-                        q_id,
-                        q_center_geom,
-                        gz_center_geom
-                    )
-
-        conn.commit()
+    print("Done")

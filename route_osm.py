@@ -5,13 +5,13 @@ import requests
 import ast
 from math import radians, sin, cos, sqrt, atan2
 
-# Глобальный кэш для уменьшения количества запросов к API
 route_cache = {}
-CACHE_ENABLED = True
+matrix_cache = {}
+CACHE_ENABLED = False
 
 def haversine(coord1, coord2):
     """
-    Вычисление расстояния между двумя географическими точками в метрах
+    Вычисление расстояния между двумя географическими точками в метрах (не используется в текущей реализации)
     """
     lat1, lon1 = coord1
     lat2, lon2 = coord2
@@ -33,7 +33,7 @@ def haversine(coord1, coord2):
 
 def get_route_valhalla(start_coords, end_coords, max_retries=3):
     """
-    Получение маршрута через Valhalla API
+    Получение маршрута через Valhalla API (не используется в текущей реализации)
     """
     cache_key = f"{start_coords}_{end_coords}" if CACHE_ENABLED else None
 
@@ -80,3 +80,56 @@ def get_route_valhalla(start_coords, end_coords, max_retries=3):
             time.sleep(1)
 
     return None
+
+
+def get_valhalla_matrix(sources, targets, max_retries=3):
+    """
+    Matrix-запрос к Valhalla.
+    sources: список кортежей (lat, lon)
+    targets: список кортежей (lat, lon)
+    Возвращает список списков расстояний в метрах: distances[i][j] – от source i до target j.
+    Для нашего случая обычно один источник и много целей, поэтому вернём плоский список для первого источника.
+    """
+    if not sources or not targets:
+        return []
+
+    cache_key = None
+    if CACHE_ENABLED:
+        cache_key = (sources[0], tuple(targets))
+        if cache_key in matrix_cache:
+            return matrix_cache[cache_key]
+
+    url = "https://valhalla1.openstreetmap.de/sources_to_targets"  # матричный эндпоинт
+
+    # Формируем тела запроса: источники и цели
+    payload = {
+        "sources": [{"lat": lat, "lon": lon} for (lat, lon) in sources],
+        "targets": [{"lat": lat, "lon": lon} for (lat, lon) in targets],
+        "costing": "pedestrian"
+    }
+
+    for attempt in range(max_retries):
+        try:
+            response = requests.post(url, json=payload, timeout=30)  # матрица может дольше считаться
+            if response.status_code == 200:
+                data = response.json()
+                # Ожидаемая структура: data['sources_to_targets'][i][j]['distance']
+                distances = []
+                for i, row in enumerate(data.get('sources_to_targets', [])):
+                    dist_row = []
+                    for j, cell in enumerate(row):
+                        if cell and 'distance' in cell:
+                            dist_row.append(cell['distance'] * 1000)  # км -> м
+                        else:
+                            dist_row.append(None)
+                    distances.append(dist_row)
+
+                result = distances[0] if distances else [None] * len(targets)
+                if CACHE_ENABLED:
+                    matrix_cache[cache_key] = result
+                return result
+        except Exception:
+            pass
+        if attempt < max_retries - 1:
+            time.sleep(2 ** attempt)  # экспоненциальная задержка
+    return [None] * len(targets)

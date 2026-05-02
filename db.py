@@ -6,8 +6,8 @@ from credentials import Credentials
 conn = psycopg2.connect(
     host = "aws-0-eu-west-1.pooler.supabase.com",
     dbname = "postgres",
-    user = Credentials.USER,
-    password = Credentials.PASSWORD,
-    port = 6543,
+    user = Credentials.USER.value,
+    password = Credentials.PASSWORD.value,
+    port = 5432,
     sslmode = "require"
 )
