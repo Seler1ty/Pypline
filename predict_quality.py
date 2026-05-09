@@ -36,6 +36,24 @@ def aggregate_data():
         """)
         aggregated_data = cur.fetchall()
 
+        df = pd.DataFrame({
+            'area': [],
+            'population': [],
+            'great_parks_count': [],
+            'great_parks_area': [],
+            'great_parks_ndvi': [],
+            'good_parks_count': [],
+            'good_parks_area': [],
+            'good_parks_ndvi': [],
+            'ok_parks_count': [],
+            'ok_parks_area': [],
+            'ok_parks_ndvi': [],
+            'general_ndvi': [],
+            'general_area': [],
+            'population_density_per_green_zone': [],
+            'general_population_density': []
+        })
+
         for data in aggregated_data:
             
             gen_area = data[6] + data[7] + data[8]
@@ -45,7 +63,7 @@ def aggregate_data():
             else:
                 gen_ndvi = np.nan  # или None
 
-            df = pd.DataFrame({
+            row = pd.DataFrame({
                 'area': [data[1]],
                 'population': [data[2]],
                 'great_parks_count': [data[3]],
@@ -62,3 +80,10 @@ def aggregate_data():
                 'population_density_per_green_zone': [data[2]/gen_area if gen_area > 0 else 0],
                 'general_population_density': [data[2]/data[1] if data[1] > 0 else 0]
             })
+
+            df = pd.concat([df, row], ignore_index=True)
+        
+        df.to_csv("new_dataset.csv", index=False)
+    
+if __name__ == '__main__':
+    aggregate_data()
