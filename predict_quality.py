@@ -82,8 +82,20 @@ def aggregate_data():
             })
 
             df = pd.concat([df, row], ignore_index=True)
-        
-        df.to_csv("new_dataset.csv", index=False)
     
+    return df
+
+
+def create_dataset() -> None:
+    df = aggregate_data()
+
+    df.to_csv("new_dataset.csv", index=False)
+
+
+def predict():
+    # TODO
+    pass
+
+
 if __name__ == '__main__':
     aggregate_data()
