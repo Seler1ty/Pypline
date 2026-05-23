@@ -56,7 +56,7 @@ def geojson_to_csv(input_geojson, output_csv):
 
 
 if __name__ == "__main__":
-    input_file = "Pypline/raw_roads_data/RoadsEKB.geojson"
-    output_file = "Pypline/prepared_roads_data/RoadsEKB.csv"
+    input_file = "Pypline/raw_roads_data/RoadsMSC.geojson"
+    output_file = "Pypline/prepared_roads_data/RoadsMSC.csv"
 
     geojson_to_csv(input_file, output_file)
