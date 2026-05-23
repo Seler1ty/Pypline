@@ -211,7 +211,7 @@ __marimo__/
 credentials.py
 
 # Model
-model/model_RQCD_state_dict_43_epoch.pt
+model/*.pt
 
 # Final Data
 prepared_roads_data/RoadsEKB.csv
