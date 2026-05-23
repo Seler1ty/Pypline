@@ -209,3 +209,11 @@ __marimo__/
 
 # DB credits
 credentials.py
+
+# Model
+model/model_RQCD_state_dict_43_epoch.pt
+
+# Final Data
+prepared_roads_data/RoadsEKB.csv
+prepared_roads_data/RoadsMSC.csv
+prepared_roads_data/RoadsSPB.csv
