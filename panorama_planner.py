@@ -91,6 +91,7 @@ def arrange_panoramas(road_id) -> Dict:
     
     return {
         'id': road_id,
+        'step_len': math.floor(pDistance) // 2,
         'way_params': way_params
     }
 

@@ -6,7 +6,7 @@ def coords_to_wkt_linestring(coord_str):
     """Преобразует список координат в WKT LINESTRING"""
     try:
         points = ast.literal_eval(coord_str)
-        if not points or len(points) < 3:
+        if not points or len(points) < 2:
             return None
         
         # Меняем порядок (lat, lon) -> (lon lat)

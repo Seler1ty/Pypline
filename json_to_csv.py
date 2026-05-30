@@ -54,9 +54,15 @@ def geojson_to_csv(input_geojson, output_csv):
 
     print(f"CSV saved to: {output_csv}")
 
+city_tag = (
+    'EKB',
+    'SPB',
+    'MSC'
+)
 
 if __name__ == "__main__":
-    input_file = "Pypline/raw_roads_data/RoadsMSC.geojson"
-    output_file = "Pypline/prepared_roads_data/RoadsMSC.csv"
+    for tag in city_tag:
+        input_file = f"Pypline/raw_roads_data/Roads{tag}.geojson"
+        output_file = f"Pypline/prepared_roads_data/Roads{tag}.csv"
 
-    geojson_to_csv(input_file, output_file)
+        geojson_to_csv(input_file, output_file)
