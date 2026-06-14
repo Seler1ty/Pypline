@@ -1,26 +1,14 @@
 import math
-from db import conn
 from geo_utils import wkt_linestring_to_coords, haversine, next_geo_coords, azimuth, back_azimuth
 from typing import Dict
 
 
 # Размещение панорам на участке дороге
-def arrange_panoramas(road_id) -> Dict:
-
-    # Получение данных о конкретном участке дороге
-    with conn.cursor() as cur:
-        cur.execute("""
-            SELECT geom_curve
-            FROM roads WHERE id = %s
-        """, (road_id,))
-        
-        rows = cur.fetchall()
-    
-    geom_curve = rows[0][0]
+def arrange_panoramas(db_coords) -> Dict:
     
     # test input
     # geom_curve = 'LINESTRING(56.8047788 60.5412938,56.8050156 60.5412006,56.8052554 60.541155,56.8053215 60.5411524,56.8053578 60.5411615,56.8053895 60.5411652,56.8054874 60.5412046,56.8055933 60.5412569,56.8056955 60.5413348,56.8060505 60.5416102)'
-    coords = wkt_linestring_to_coords(geom_curve)
+    coords = wkt_linestring_to_coords(db_coords)
 
     distance = 0
 
@@ -64,22 +52,25 @@ def arrange_panoramas(road_id) -> Dict:
 
             if len(way_params) == 0:
                 way_params.append({
-                    'lat': pano_coords[0],
-                    'lon': pano_coords[1],
+                    'lat': pano_coords[1],
+                    'lon': pano_coords[0],
                     'direction_deg': theta_deg
                 })
             else:
                 way_params.append({
-                    'lat': pano_coords[0],
-                    'lon': pano_coords[1],
+                    'lat': pano_coords[1],
+                    'lon': pano_coords[0],
                     'direction_deg': theta_deg
                 })
 
+                # Unused (performance matters)
+                '''
                 way_params.append({
-                    'lat': pano_coords[0],
-                    'lon': pano_coords[1],
+                    'lat': pano_coords[1],
+                    'lon': pano_coords[0],
                     'direction_deg': back_azimuth(theta_deg)
                 })
+                '''
 
             travelled += distance_to_next
 
@@ -90,7 +81,6 @@ def arrange_panoramas(road_id) -> Dict:
         distance_to_next -= (segment_length - travelled)
     
     return {
-        'id': road_id,
         'step_len': math.floor(pDistance) // 2,
         'way_params': way_params
     }

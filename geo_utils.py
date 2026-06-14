@@ -49,8 +49,8 @@ def wkt_linestring_to_coords(wkt_str):
             lon, lat = float(parts[0]), float(parts[1])
             points.append([lat, lon])  # Меняем обратно (lon, lat) -> (lat, lon)
         
-        # Возвращаем None если меньше 3 точек
-        if len(points) < 3:
+        # Возвращаем None если меньше 2 точек
+        if len(points) < 2:
             return None
         
         return points

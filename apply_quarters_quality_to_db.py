@@ -5,7 +5,7 @@ from datetime import date
 from db import conn
 from predictor import Predictor
 
-MODEL_PATH = "ai_models/green_zones_model.pkl"
+MODEL_PATH = "Pypline/ai_models/green_zones_model.pkl"
 FEATURE_COLUMNS = [
     'area', 'population',
     'great_parks_count', 'great_parks_area', 'great_parks_ndvi',
@@ -153,7 +153,7 @@ def main():
     # Отделяем quarter_id от признаков
     ids = df['quarter_id'].values
     X = df[FEATURE_COLUMNS]
-
+    
     print("4. Применение модели...")
     predictions = predictor.predict(X)
 
@@ -161,8 +161,9 @@ def main():
     print("5. Обновление БД...")
     today = date.today()
     for qid, qual in zip(ids, predictions):
-        quality_int = int(round(qual))
-        update_quarter_results(qid, quality_int, today)
+        quality_int = int(qual)
+        qid_int = int(qid)
+        update_quarter_results(qid_int, quality_int, today)
 
     ids_with_data = set(ids)
     ids_without_data = set(quarter_ids) - ids_with_data

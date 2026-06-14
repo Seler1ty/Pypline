@@ -1,73 +1,57 @@
 from PIL import Image
 import numpy as np
-
 import torch
 from torch import nn
 from torchvision import transforms
+from torchvision.models import resnet34, ResNet34_Weights
 
-class RoadClassifier(nn.Module):
-    def __init__(self, inp, out, hidden_size, act='relu'):
-        super().__init__()
-        # Сначала уменьшаем картинку свертками
-        self.feature_extractor = nn.Sequential(
-            nn.Conv2d(3, 16, kernel_size=3, stride=2, padding=1, bias=False), # 416 -> 208
-            nn.ReLU(),
-            nn.BatchNorm2d(16),
-            nn.MaxPool2d(2), # 208 -> 104
-            nn.Conv2d(16, 32, kernel_size=3, stride=2, padding=1, bias=False), # 104 -> 52
-            nn.ReLU(),
-            nn.BatchNorm2d(32),
-            nn.MaxPool2d(2), # 52 -> 26
-            nn.Flatten()
-        )
 
-        inp = 32 * 26 * 26
-
-        self.act = nn.ModuleDict({
-            'relu': nn.ReLU()
-        })
-        self.layers = nn.ModuleList()
-        for i in range(int(np.log2(hidden_size) - 1)):
-            self.layers.add_module(f'linear_{i}', nn.Linear(inp, hidden_size))
-            self.layers.add_module(f'act_{i}', self.act[act])
-            inp = hidden_size
-            hidden_size = int(hidden_size / 2)
-        self.layers.add_module(f'layer_{i+1}', nn.Linear(inp, out))
-
-    def forward(self, x):
-        x = self.feature_extractor(x)
-
-        for layer in self.layers:
-            x = layer(x)
-        return x
+def get_ready_model(num_classes=3):
+    weights = ResNet34_Weights.DEFAULT
+    model = resnet34(weights=weights)
+    
+    for param in model.parameters():
+        param.requires_grad = False
+        
+    in_features = model.fc.in_features
+    
+    model.fc = nn.Sequential(
+        nn.Linear(in_features, 256),
+        nn.BatchNorm1d(256),
+        nn.ReLU(),
+        nn.Dropout(0.2),
+        nn.Linear(256, num_classes) 
+    )
+    
+    return model
 
 class ModelUser:
-    def __init__(self, model_name):
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        param_model = torch.load(model_name, map_location=torch.device(device))
-        self.model = RoadClassifier(inp=3 * 416**2, out=6, hidden_size=2048, act='relu').to(device=device)
-        self.model.load_state_dict(param_model)
+    def __init__(self, model, device, class_names=['bad', 'regular', 'good']):
+        self.model = model
         self.model.eval()
         self.device = device
-
-        # Оптимизируем трансформации
+        
         self.transform = transforms.Compose([
-            transforms.Resize(416),
-            transforms.Lambda(lambda img: img.crop((0, img.height - 416, 416, img.height))),
-            transforms.ToTensor()
+            # transforms.Resize(416),
+            # transforms.Lambda(lambda img: img.crop((
+            #     img.width // 2 - 208,
+            #     (img.height // 2) * (img.height // 2 > 416) + img.height - 416 * (img.height // 2 <= 416),
+            #     img.width // 2 + 208,
+            #     (img.height // 2) * (img.height // 2 > 416) + img.height - 416 * (img.height // 2 <= 416) + 416
+            # ))),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])
-
-        self.class_names = [
-            '01_asphalt(Good)', '02_asphalt(Regular)', '03_asphalt(Bad)',
-            '04_paved', '05_unpaved(Regular)', '06_unpaved(Bad)'
-        ]
+        
+        self.class_names = class_names
 
     def predict_image(self, image_path):
         image = Image.open(image_path).convert('RGB')
         input_tensor = self.transform(image).unsqueeze(0).to(self.device)
 
-        with torch.set_grad_enabled(True):
+        with torch.no_grad():
             output = self.model(input_tensor)
-            target_index = output.argmax(1).item()
-
+            probabilities = torch.softmax(output, dim=1)[0]
+            target_index = probabilities.argmax().item()
+        
         return self.class_names[target_index]

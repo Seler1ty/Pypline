@@ -1,29 +1,20 @@
-from coords_fill import process as fill_process
-from process_routes import process_routes
-from db import conn
+from predict_road import predict_road_quality
+from db import get_conn
 
-def get_ids(start = None, end = None):
-    if not(start) and not(end):
+with get_conn() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT MIN(id), MAX(id) FROM distances WHERE is_processed = FALSE")
-            min_id, max_id = cur.fetchone()
-            if min_id is None:
-                print("Нет необработанных записей.")
-            return min_id, max_id
-    else:
-        return start, end
+            cur.execute("""
+                SELECT id, ST_AsText(geom_curve)
+                FROM roads WHERE city_id=1 AND is_processed=FALSE
+            """)
+            rows = cur.fetchall()
 
-def main():
-    # fill = true – запускаем первичное заполнение
-    fill = False  # Вызывается только 1 раз
-    if fill:
-        print("Первичное заполнение...")
-        fill_process()
-        print("Готово.")
-    else:
-        print("Запуск обработки...")
-        process_routes(batch_size=100, fetch_limit=5000)
-        print("Готово.")
+geom = rows[1][1]
 
-if __name__ == "__main__":
-    main()
+print(geom)
+result = predict_road_quality(geom, road_id="test_road")
+
+print(f"Total points: {result['total_points']}")
+print(f"Successful:   {result['success_count']}")
+for r in result["results"]:
+    print(r)
