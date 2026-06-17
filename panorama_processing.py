@@ -46,8 +46,8 @@ def _run_in_new_thread(fn, *args):
 
 
 def crop_panorama_with_direction(input_path: str, output_path: str,
-                                 direction_deg: float = 0, fov_deg: float = 40,
-                                 height_pct: float = 0.15, tilt_pct: float = 0.35):
+                                 direction_deg: float = 0, fov_deg: float = 25,
+                                 height_pct: float = 0.1, tilt_pct: float = 0.3):
     """
     Crops a panorama to the given direction, FOV, and tilt.
     """
@@ -91,8 +91,8 @@ def crop_panorama_with_direction(input_path: str, output_path: str,
 
 def get_panorama_with_view(lat: float, lon: float, direction_deg: float,
                            output_file: str = "road_view.jpg",
-                           fov_deg: float = 40, tilt_pct: float = 0.35,
-                           height_pct: float = 0.15,
+                           fov_deg: float = 25, tilt_pct: float = 0.35,
+                           height_pct: float = 0.1,
                            max_distance_meters: float = 5.0,
                            retries: int = 3):
     """
@@ -114,9 +114,9 @@ def get_panorama_with_view(lat: float, lon: float, direction_deg: float,
 async def get_panorama_with_view_async(lat: float, lon: float,
                                        direction_deg: float,
                                        output_file: str = "road_view.jpg",
-                                       fov_deg: float = 40,
+                                       fov_deg: float = 25,
                                        tilt_pct: float = 0.35,
-                                       height_pct: float = 0.15,
+                                       height_pct: float = 0.1,
                                        max_distance_meters: float = 5.0,
                                        retries: int = 3,
                                        semaphore: asyncio.Semaphore | None = None):

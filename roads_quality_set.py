@@ -90,14 +90,14 @@ def main():
         with conn.cursor() as cur:
             cur.execute("""
                 SELECT id, ST_AsText(geom_curve)
-                FROM roads WHERE city_id=1 AND is_processed=TRUE
+                FROM roads WHERE city_id=2 AND is_processed=FALSE
             """)
             rows = cur.fetchall()
 
-    for batch in range(1):
+    for batch in range(len(rows) // 100 + 1):
         pending = [
             (row[0], row[1])
-            for row in rows[:3]
+            for row in rows[batch*100:min((batch+1)*100, len(rows))]
         ]
 
         road_results = process_all_roads(
